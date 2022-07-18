@@ -1,0 +1,1 @@
+# Cloudformation template to create EC2 instance
