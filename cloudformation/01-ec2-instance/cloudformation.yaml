@@ -1,7 +1,27 @@
 Resources:
-  MyNewEC2Instance:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to client host
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  MyEC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: us-west-2a
       ImageId: ami-098e42ae54c764c35
       InstanceType: t2.micro
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref MyEC2Instance
