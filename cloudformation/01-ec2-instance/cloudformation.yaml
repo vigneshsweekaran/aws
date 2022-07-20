@@ -1,3 +1,33 @@
+Parameters:
+  InstanceTypeParameter:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.large
+    Description: Enter t2.micro, m1.small, or m1.large. Default is t2.micro.
+
+  AttachElasticIp:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+    Description: Enter true or false. Default is false.
+
+Conditions:
+  EnableElasticIp: !Equals [ !Ref AttachElasticIp, true]
+
+Mappings: 
+  AmiId: 
+    us-east-1: 
+      "ubuntu-22.04": "ami-052efd3df9dad4825"
+      "amaxon-linux-2": "ami-0cff7528ff583bf9a"
+    us-west-2: 
+      "ubuntu-22.04": "ami-0d70546e43a941d70"
+      "amaxon-linux-2": "ami-098e42ae54c764c35"
+
 Resources:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -13,12 +43,13 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: us-west-2a
-      ImageId: ami-098e42ae54c764c35
-      InstanceType: t2.micro
+      ImageId: !FindInMap [AmiId, !Ref "AWS::Region", amaxon-linux-2]
+      InstanceType: !Ref InstanceTypeParameter
       SecurityGroups:
         - !Ref InstanceSecurityGroup
 
   EIP:
     Type: AWS::EC2::EIP
+    Condition: EnableElasticIp
     Properties:
       InstanceId: !Ref MyEC2Instance
