@@ -1,0 +1,94 @@
+Parameters:
+  InstanceTypeParameter:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.large
+    Description: Enter t2.micro, m1.small, or m1.large. Default is t2.micro.
+
+  AttachElasticIp:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+    Description: Enter true or false. Default is false.
+
+Conditions:
+  EnableElasticIp: !Equals [ !Ref AttachElasticIp, true]
+
+Mappings: 
+  AmiId: 
+    us-east-1: 
+      "Ubuntu2204": "ami-052efd3df9dad4825"
+      "AmazonLinux2": "ami-0cff7528ff583bf9a"
+    us-west-2: 
+      "Ubuntu2204": "ami-0d70546e43a941d70"
+      "AmazonLinux2": "ami-098e42ae54c764c35"
+
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [AmiId, !Ref "AWS::Region", AmazonLinux2]
+      InstanceType: !Ref InstanceTypeParameter
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      UserData: 
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -xe
+            # Get the latest CloudFormation package
+            yum update -y aws-cfn-bootstrap
+            # Start cfn-init
+            /opt/aws/bin/cfn-init -s ${AWS::StackId} -r MyInstance --region ${AWS::Region}
+            # Start cfn-signal to the wait condition
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource SampleWaitCondition --region ${AWS::Region}
+  
+    Metadata:
+      Comment: Install a simple Apache HTTP page
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+          files:
+            "/var/www/html/index.html":
+              content: |
+                <h1>Hello World from EC2 instance!</h1>
+                <p>This was created using cfn-init</p>
+              mode: '000644'
+          commands:
+            hello:
+              command: "echo 'hello world'"
+          services:
+            sysvinit:
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+
+
+  SampleWaitCondition:
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT2M
+        Count: 1
+    Type: AWS::CloudFormation::WaitCondition
+  
+  EIP:
+    Type: AWS::EC2::EIP
+    Condition: EnableElasticIp
+    Properties:
+      InstanceId: !Ref MyEC2Instance

@@ -1,0 +1,62 @@
+Parameters:
+  InstanceTypeParameter:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - m1.small
+      - m1.large
+    Description: Enter t2.micro, m1.small, or m1.large. Default is t2.micro.
+
+  AttachElasticIp:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+    Description: Enter true or false. Default is false.
+
+Conditions:
+  EnableElasticIp: !Equals [ !Ref AttachElasticIp, true]
+
+Mappings: 
+  AmiId: 
+    us-east-1:
+      "Ubuntu2204": "ami-052efd3df9dad4825"
+      "AmazonLinux2": "ami-0cff7528ff583bf9a"
+    us-west-2:
+      "Ubuntu2204": "ami-0d70546e43a941d70"
+      "AmazonLinux2": "ami-098e42ae54c764c35"
+
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [AmiId, !Ref "AWS::Region", AmazonLinux2]
+      InstanceType: !Ref InstanceTypeParameter
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
+      UserData: 
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "Hello World from cloudformation user data" > /var/www/html/index.html
+
+  EIP:
+    Type: AWS::EC2::EIP
+    Condition: EnableElasticIp
+    Properties:
+      InstanceId: !Ref MyEC2Instance
