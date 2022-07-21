@@ -2,9 +2,9 @@
 
 # Commands
 ```
-aws cloudformation deploy --template-file template.yaml --stack-name ec2-instance
+aws cloudformation deploy --template-file template.yaml --stack-name test-stack
 
-aws cloudformation delete-stack --stack-name ec2-instance
+aws cloudformation delete-stack --stack-name test-stack
 ```
 
 **Cloudformation template creates the following**
